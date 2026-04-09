@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESTOQUE.SYS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0f0e;
+      --surface:  #141714;
+      --border:   #2a2e29;
+      --accent:   #c8f03c;
+      --accent2:  #3cf0a0;
+      --warn:     #f0a03c;
+      --danger:   #f03c3c;
+      --text:     #e8ede8;
+      --muted:    #6b736b;
+      --mono:     'Share Tech Mono', monospace;
+      --sans:     'Barlow Condensed', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      min-height: 100vh;
+      /* subtle scanline texture */
+      background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.012) 2px,
+        rgba(255,255,255,0.012) 4px
+      );
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      background: rgba(13,15,14,0.96);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 1.15rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+    }
+    .logo span { color: var(--muted); }
+    .header-meta {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+      line-height: 1.6;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent2);
+      margin-right: 6px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────── */
+    .wrapper {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ── Flash messages ─────────────────────────────────────────────── */
+    .flashes { margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: .5rem; }
+    .flash {
+      font-family: var(--mono);
+      font-size: .82rem;
+      padding: .65rem 1rem;
+      border-left: 3px solid;
+      border-radius: 2px;
+      animation: slideIn .25s ease;
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+    .flash.success { border-color: var(--accent2); background: rgba(60,240,160,.07); color: var(--accent2); }
+    .flash.error   { border-color: var(--danger);  background: rgba(240,60,60,.07);  color: var(--danger); }
+    .flash.warning { border-color: var(--warn);    background: rgba(240,160,60,.07); color: var(--warn); }
+
+    /* ── KPI cards ──────────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .kpi {
+      background: var(--surface);
+      padding: 1.4rem 1.6rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--accent);
+    }
+    .kpi:nth-child(2)::before { background: var(--accent2); }
+    .kpi:nth-child(3)::before { background: var(--warn); }
+    .kpi:nth-child(4)::before { background: var(--danger); }
+    .kpi-label {
+      font-family: var(--mono);
+      font-size: .7rem;
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: .5rem;
+    }
+    .kpi-value {
+      font-family: var(--sans);
+      font-size: 2.4rem;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--text);
+    }
+    .kpi-value.money::before { content: 'R$ '; font-size: 1rem; font-weight: 400; color: var(--muted); }
+
+    /* ── Section headers ────────────────────────────────────────────── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    .section-head h2 {
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .tag {
+      font-family: var(--mono);
+      font-size: .68rem;
+      padding: 2px 8px;
+      border-radius: 2px;
+      background: var(--border);
+      color: var(--muted);
+    }
+
+    /* ── Two-column layout ──────────────────────────────────────────── */
+    .cols { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: start; }
+
+    /* ── Table ──────────────────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: .75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.02);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(200,240,60,.04); }
+    tbody td {
+      padding: .8rem 1rem;
+      font-size: .95rem;
+    }
+    .cod  { font-family: var(--mono); font-size: .78rem; color: var(--accent); }
+    .cat-badge {
+      font-family: var(--mono);
+      font-size: .68rem;
+      padding: 2px 8px;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .cat-eletronico  { background: rgba(60,160,240,.15); color: #3ca0f0; }
+    .cat-escritorio  { background: rgba(200,240,60,.12); color: var(--accent); }
+    .cat-alimento    { background: rgba(60,240,160,.12); color: var(--accent2); }
+    .cat-vestuario   { background: rgba(240,60,240,.12); color: #f03cf0; }
+    .cat-outro       { background: rgba(150,150,150,.12); color: var(--muted); }
+    .qty { font-weight: 700; }
+    .qty.low { color: var(--danger); }
+    .qty.med { color: var(--warn); }
+    .qty.ok  { color: var(--accent2); }
+    .price { font-family: var(--mono); font-size: .85rem; }
+    .vtotal { font-family: var(--mono); font-size: .82rem; color: var(--muted); }
+
+    /* row actions */
+    .row-actions { display: flex; gap: .4rem; }
+    .btn-icon {
+      font-family: var(--mono);
+      font-size: .72rem;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-icon.del:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Sidebar panels ─────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .panel-head {
+      font-family: var(--mono);
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      padding: .65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(200,240,60,.04);
+    }
+    .panel-body { padding: 1rem; }
+
+    /* ── Forms ──────────────────────────────────────────────────────── */
+    .field { margin-bottom: .75rem; }
+    label {
+      display: block;
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    input, select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: .85rem;
+      padding: .5rem .75rem;
+      border-radius: 2px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface); }
+
+    .btn {
+      width: 100%;
+      padding: .6rem 1rem;
+      border: none;
+      border-radius: 2px;
+      font-family: var(--sans);
+      font-weight: 700;
+      font-size: .9rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all .15s;
+      margin-top: .25rem;
+    }
+    .btn-primary   { background: var(--accent);  color: #0d0f0e; }
+    .btn-primary:hover  { background: #d4f54a; }
+    .btn-secondary { background: var(--accent2); color: #0d0f0e; }
+    .btn-secondary:hover { background: #52f5b0; }
+    .btn-warn      { background: var(--warn);    color: #0d0f0e; }
+    .btn-warn:hover     { background: #f5b052; }
+
+    /* ── Modal overlay ──────────────────────────────────────────────── */
+    .modal-bg {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      width: 380px;
+      overflow: hidden;
+      animation: popIn .2s ease;
+    }
+    @keyframes popIn { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:none; } }
+    .modal-head {
+      font-family: var(--mono);
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      padding: .75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 1.1rem; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--danger); }
+    .modal-body { padding: 1.25rem; }
+
+    /* ── Alert row (low stock) ──────────────────────────────────────── */
+    .alert-list { display: flex; flex-direction: column; gap: .4rem; }
+    .alert-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .88rem;
+      padding: .45rem .75rem;
+      background: rgba(240,60,60,.06);
+      border-left: 2px solid var(--danger);
+      border-radius: 2px;
+    }
+    .alert-item .name { color: var(--text); }
+    .alert-item .qty-val { font-family: var(--mono); font-size: .8rem; color: var(--danger); }
+    .empty-msg {
+      font-family: var(--mono);
+      font-size: .78rem;
+      color: var(--muted);
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .kpi-grid { grid-template-columns: repeat(2,1fr); }
+      .cols { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .wrapper { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ESTOQUE<span>.</span>SYS</div>
+  <div class="header-meta">
+    <span class="status-dot"></span>ONLINE &nbsp;|&nbsp;
+    {{ resumo.total_skus }} SKU{% if resumo.total_skus != 1 %}s{% endif %} &nbsp;|&nbsp;
+    C14 · INATEL
+  </div>
+</header>
+
+<div class="wrapper">
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flashes">
+        {% for cat, msg in messages %}
+          <div class="flash {{ cat }}">▸ {{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Total SKUs</div>
+      <div class="kpi-value">{{ resumo.total_skus }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Itens</div>
+      <div class="kpi-value">{{ resumo.total_itens }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Valor em Estoque</div>
+      <div class="kpi-value money">{{ "%.2f"|format(resumo.valor_total) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Sem Estoque</div>
+      <div class="kpi-value">{{ resumo.produtos_zerados }}</div>
+    </div>
+  </div>
+
+  <div class="cols">
+
+    <!-- LEFT: product table -->
+    <div>
+      <div class="section-head">
+        <h2>Produtos</h2>
+        <span class="tag">{{ produtos|length }}</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Nome</th>
+              <th>Categoria</th>
+              <th>Qtd</th>
+              <th>Preço Unit.</th>
+              <th>Valor Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in produtos %}
+            <tr>
+              <td class="cod">{{ p.codigo }}</td>
+              <td>{{ p.nome }}</td>
+              <td><span class="cat-badge cat-{{ p.categoria }}">{{ p.categoria }}</span></td>
+              <td>
+                <span class="qty {% if p.quantidade == 0 %}low{% elif p.quantidade < 10 %}med{% else %}ok{% endif %}">
+                  {{ p.quantidade }}
+                </span>
+              </td>
+              <td class="price">R$ {{ "%.2f"|format(p.preco) }}</td>
+              <td class="vtotal">R$ {{ "%.2f"|format(p.valor_total()) }}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn-icon"
+                    onclick="openMovModal('entrada','{{ p.codigo }}','{{ p.nome }}')">+ENT</button>
+                  <button class="btn-icon"
+                    onclick="openMovModal('saida','{{ p.codigo }}','{{ p.nome }}')">−SAI</button>
+                  <button class="btn-icon"
+                    onclick="openPrecoModal('{{ p.codigo }}','{{ p.nome }}',{{ p.preco }})">R$</button>
+                  <form method="POST" action="/remover/{{ p.codigo }}"
+                        onsubmit="return confirm('Remover {{ p.nome }}?')">
+                    <button type="submit" class="btn-icon del">DEL</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="empty-msg">Nenhum produto cadastrado.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: sidebar -->
+    <div>
+
+      <!-- Add product -->
+      <div class="panel">
+        <div class="panel-head">+ Novo Produto</div>
+        <div class="panel-body">
+          <form method="POST" action="/adicionar">
+            <div class="field">
+              <label>Código</label>
+              <input name="codigo" placeholder="EX001" required>
+            </div>
+            <div class="field">
+              <label>Nome</label>
+              <input name="nome" placeholder="Nome do produto" required>
+            </div>
+            <div class="field">
+              <label>Preço (R$)</label>
+              <input name="preco" type="number" step="0.01" min="0" placeholder="0.00" required>
+            </div>
+            <div class="field">
+              <label>Quantidade</label>
+              <input name="quantidade" type="number" min="0" placeholder="0" required>
+            </div>
+            <div class="field">
+              <label>Categoria</label>
+              <select name="categoria">
+                {% for cat in categorias %}
+                  <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">CADASTRAR</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Low stock alert -->
+      <div class="panel">
+        <div class="panel-head">⚠ Estoque Baixo (&lt; 10 un.)</div>
+        <div class="panel-body">
+          {% if baixo %}
+            <div class="alert-list">
+              {% for p in baixo %}
+              <div class="alert-item">
+                <span class="name">{{ p.nome }}</span>
+                <span class="qty-val">{{ p.quantidade }} un.</span>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="empty-msg">Tudo em ordem ✓</p>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /cols -->
+</div><!-- /wrapper -->
+
+<!-- ── Modal: Movimentação ───────────────────────────────────────────────── -->
+<div class="modal-bg" id="movModal">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="movTitle">MOVIMENTAÇÃO</span>
+      <button class="modal-close" onclick="closeModal('movModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="movForm" method="POST">
+        <input type="hidden" name="codigo" id="movCodigo">
+        <div class="field">
+          <label id="movLabel">Quantidade</label>
+          <input name="quantidade" type="number" min="1" placeholder="Ex: 10" required>
+        </div>
+        <button type="submit" id="movBtn" class="btn btn-secondary">CONFIRMAR</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Atualizar Preço ────────────────────────────────────────────── -->
+<div class="modal-bg" id="precoModal">
+  <div class="modal">
+    <div class="modal-head">
+      <span id="precoTitle">ATUALIZAR PREÇO</span>
+      <button class="modal-close" onclick="closeModal('precoModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form method="POST" action="/atualizar_preco">
+        <input type="hidden" name="codigo" id="precoCodigo">
+        <div class="field">
+          <label>Novo Preço (R$)</label>
+          <input name="preco" id="precoInput" type="number" step="0.01" min="0" required>
+        </div>
+        <button type="submit" class="btn btn-warn">ATUALIZAR</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openMovModal(tipo, codigo, nome) {
+    document.getElementById('movCodigo').value = codigo;
+    document.getElementById('movForm').action  = '/' + tipo;
+    const isEntrada = tipo === 'entrada';
+    document.getElementById('movTitle').textContent =
+      (isEntrada ? '+ ENTRADA' : '− SAÍDA') + ' · ' + nome;
+    document.getElementById('movLabel').textContent =
+      isEntrada ? 'Qtd a receber' : 'Qtd a retirar';
+    const btn = document.getElementById('movBtn');
+    btn.className = 'btn ' + (isEntrada ? 'btn-secondary' : 'btn-warn');
+    document.getElementById('movModal').classList.add('open');
+  }
+
+  function openPrecoModal(codigo, nome, precoAtual) {
+    document.getElementById('precoCodigo').value = codigo;
+    document.getElementById('precoTitle').textContent = 'PREÇO · ' + nome;
+    document.getElementById('precoInput').value = precoAtual;
+    document.getElementById('precoModal').classList.add('open');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  // Close on backdrop click
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
+  });
+
+  // Close on Esc
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape')
+      document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+  });
+</script>
+</body>
+</html>
