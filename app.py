@@ -4,7 +4,12 @@ Execute com:  python app.py
 Acesse em:   http://127.0.0.1:5000
 """
 
+import os
+
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+
+load_dotenv()
 from src.estoque import (
     Estoque, Produto,
     ProdutoInvalidoError, EstoqueInsuficienteError,
@@ -13,7 +18,7 @@ from src.estoque import (
 )
 
 app = Flask(__name__)
-app.secret_key = "estoque-c14-inatel"
+app.secret_key = os.environ["SECRET_KEY"]
 
 # ── Estado em memória (persiste enquanto o servidor roda) ─────────────────────
 estoque = Estoque()
@@ -127,4 +132,4 @@ def api_produtos():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.getenv("FLASK_DEBUG", "0") == "1")
