@@ -7,7 +7,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.estoque import (
     Produto,
+    Estoque,
     ProdutoInvalidoError,
+    EstoqueInsuficienteError,
+    ProdutoNaoEncontradoError,
     CategoriaInvalidaError,
 )
 
@@ -93,3 +96,83 @@ class TestProduto(unittest.TestCase):
         p = Produto("P013", "Produto", 100.0)
         with self.assertRaises(ProdutoInvalidoError):
             p.aplicar_desconto(101)
+
+
+class TestEstoqueOperacoes(unittest.TestCase):
+
+    def setUp(self):
+        self.estoque = Estoque()
+        self.produto = Produto("E001", "Caneta", 2.50, 50)
+        self.estoque.adicionar_produto(self.produto)
+
+    def test_adicionar_produto(self):
+        p = Produto("E002", "Lápis", 1.00, 30)
+        self.estoque.adicionar_produto(p)
+        self.assertEqual(self.estoque.buscar_produto("E002"), p)
+
+    def test_adicionar_produto_duplicado_levanta_erro(self):
+        duplicado = Produto("E001", "Caneta Cópia", 3.00)
+        with self.assertRaises(ProdutoInvalidoError):
+            self.estoque.adicionar_produto(duplicado)
+
+    def test_adicionar_objeto_invalido_levanta_erro(self):
+        with self.assertRaises(ProdutoInvalidoError):
+            self.estoque.adicionar_produto("não é produto")
+
+    def test_remover_produto(self):
+        removido = self.estoque.remover_produto("E001")
+        self.assertEqual(removido.codigo, "E001")
+        self.assertEqual(self.estoque.total_de_produtos(), 0)
+
+    def test_remover_produto_inexistente_levanta_erro(self):
+        with self.assertRaises(ProdutoNaoEncontradoError):
+            self.estoque.remover_produto("XXXX")
+
+    def test_buscar_produto(self):
+        encontrado = self.estoque.buscar_produto("E001")
+        self.assertEqual(encontrado, self.produto)
+
+    def test_buscar_produto_codigo_minusculo_normalizado(self):
+        encontrado = self.estoque.buscar_produto("e001")
+        self.assertEqual(encontrado.codigo, "E001")
+
+    def test_buscar_produto_inexistente_levanta_erro(self):
+        with self.assertRaises(ProdutoNaoEncontradoError):
+            self.estoque.buscar_produto("XXXX")
+
+    def test_listar_produtos(self):
+        p2 = Produto("E002", "Borracha", 0.75, 20)
+        self.estoque.adicionar_produto(p2)
+        lista = self.estoque.listar_produtos()
+        self.assertEqual(len(lista), 2)
+        self.assertIn(self.produto, lista)
+
+    def test_entrada_aumenta_quantidade(self):
+        self.estoque.entrada("E001", 10)
+        self.assertEqual(self.estoque.buscar_produto("E001").quantidade, 60)
+
+    def test_entrada_quantidade_invalida_levanta_erro(self):
+        with self.assertRaises(ProdutoInvalidoError):
+            self.estoque.entrada("E001", 0)
+
+    def test_saida_diminui_quantidade(self):
+        self.estoque.saida("E001", 20)
+        self.assertEqual(self.estoque.buscar_produto("E001").quantidade, 30)
+
+    def test_saida_estoque_insuficiente_levanta_erro(self):
+        with self.assertRaises(EstoqueInsuficienteError):
+            self.estoque.saida("E001", 100)
+
+    def test_atualizar_preco(self):
+        self.estoque.atualizar_preco("E001", 5.00)
+        self.assertAlmostEqual(self.estoque.buscar_produto("E001").preco, 5.00)
+
+    def test_atualizar_preco_negativo_levanta_erro(self):
+        with self.assertRaises(ProdutoInvalidoError):
+            self.estoque.atualizar_preco("E001", -1.00)
+
+    def test_transferir_entre_estoques(self):
+        destino = Estoque()
+        self.estoque.transferir("E001", 15, destino)
+        self.assertEqual(self.estoque.buscar_produto("E001").quantidade, 35)
+        self.assertEqual(destino.buscar_produto("E001").quantidade, 15)
