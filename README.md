@@ -52,6 +52,7 @@ sistema-estoque-ci/
 ├── requirements.txt
 ├── setup.py
 ├── .gitignore
+├── .env.example             # Exemplo de variáveis de ambiente
 └── README.md
 ```
 
@@ -59,24 +60,45 @@ sistema-estoque-ci/
 
 ## 🚀 Como Rodar Localmente
 
+### 1. Clone o repositório
 ```bash
-# 1. Clone o repositório
 git clone https://github.com/Vinny-TS/sistema-estoque-ci.git
 cd sistema-estoque-ci
+```
 
-# 2. Crie e ative o ambiente virtual
+### 2. Crie e ative o ambiente virtual
+```bash
 python -m venv .venv
 source .venv/bin/activate    # Linux/macOS
 .venv\Scripts\activate       # Windows
+```
 
-# 3. Instale as dependências
+### 3. Instale as dependências
+```bash
 pip install -r requirements.txt
+```
 
-# 4. Suba a interface web
+### 4. Configure as variáveis de ambiente
+```bash
+cp .env.example .env
+```
+**Edite o .env gerado:**
+```bash
+# Chave criptográfica secreta e aleatória para assniatura segura dos cookies de sessão.
+SECRET_KEY=troque-por-um-valor-seguro-gerado-com-secrets.token_hex(32)
+
+# Definição do modo de debug (em produção, sempre deixar vazio ou 0).
+FLASK_DEBUG=1
+```
+
+### 5. Suba a interface web
+```bash
 python app.py
+```
 
-# 5. Acesse no navegador
-#    http://127.0.0.1:5000
+### 6. Acesse no navegador
+```bash
+http://127.0.0.1:5000
 ```
 
 ---
