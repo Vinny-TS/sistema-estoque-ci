@@ -176,3 +176,125 @@ class TestEstoqueOperacoes(unittest.TestCase):
         self.estoque.transferir("E001", 15, destino)
         self.assertEqual(self.estoque.buscar_produto("E001").quantidade, 35)
         self.assertEqual(destino.buscar_produto("E001").quantidade, 15)
+
+class TestEstoqueRelatorios(unittest.TestCase):
+
+    def setUp(self):
+        self.estoque = Estoque()
+        self.p1 = Produto("R001", "Notebook", 3000.0, 2, "eletronico")
+        self.p2 = Produto("R002", "Caderno", 20.0, 3, "escritorio")
+        self.p3 = Produto("R003", "Arroz", 25.0, 10, "alimento")
+        self.p4 = Produto("R004", "Camiseta", 50.0, 1, "vestuario")
+        self.p5 = Produto("R005", "Mouse", 80.0, 0, "eletronico")
+
+        for produto in [self.p1, self.p2, self.p3, self.p4, self.p5]:
+            self.estoque.adicionar_produto(produto)
+
+    def test_valor_total_estoque(self):
+        self.assertAlmostEqual(self.estoque.valor_total_estoque(), 6360.0)
+
+    def test_valor_total_estoque_vazio(self):
+        estoque_vazio = Estoque()
+        self.assertAlmostEqual(estoque_vazio.valor_total_estoque(), 0.0)
+
+    def test_produtos_com_estoque_baixo_limite_padrao(self):
+        codigos = {p.codigo for p in self.estoque.produtos_com_estoque_baixo()}
+        self.assertEqual(codigos, {"R001", "R002", "R004", "R005"})
+
+    def test_produtos_com_estoque_baixo_limite_personalizado(self):
+        codigos = {p.codigo for p in self.estoque.produtos_com_estoque_baixo(2)}
+        self.assertEqual(codigos, {"R004", "R005"})
+
+    def test_produtos_com_estoque_baixo_sem_resultados(self):
+        estoque_ok = Estoque()
+        estoque_ok.adicionar_produto(Produto("R006", "Teclado", 100.0, 8, "eletronico"))
+        self.assertEqual(estoque_ok.produtos_com_estoque_baixo(), [])
+
+    def test_total_de_produtos(self):
+        self.assertEqual(self.estoque.total_de_produtos(), 5)
+
+    def test_total_de_produtos_estoque_vazio(self):
+        self.assertEqual(Estoque().total_de_produtos(), 0)
+
+    def test_buscar_por_categoria_retorna_produtos_corretos(self):
+        codigos = {p.codigo for p in self.estoque.buscar_por_categoria("eletronico")}
+        self.assertEqual(codigos, {"R001", "R005"})
+
+    def test_buscar_por_categoria_normaliza_maiusculas_e_espacos(self):
+        codigos = {p.codigo for p in self.estoque.buscar_por_categoria("  ELETRONICO ")}
+        self.assertEqual(codigos, {"R001", "R005"})
+
+    def test_buscar_por_categoria_invalida_levanta_erro(self):
+        with self.assertRaises(CategoriaInvalidaError):
+            self.estoque.buscar_por_categoria("brinquedo")
+
+    def test_produto_mais_valioso(self):
+        produto = self.estoque.produto_mais_valioso()
+        self.assertEqual(produto.codigo, "R001")
+
+    def test_produto_mais_valioso_estoque_vazio_levanta_erro(self):
+        with self.assertRaises(ProdutoNaoEncontradoError):
+            Estoque().produto_mais_valioso()
+
+    def test_resumo_retorna_total_skus(self):
+        resumo = self.estoque.resumo()
+        self.assertEqual(resumo["total_skus"], 5)
+
+    def test_resumo_retorna_total_itens(self):
+        resumo = self.estoque.resumo()
+        self.assertEqual(resumo["total_itens"], 16)
+
+    def test_resumo_retorna_valor_total_e_produtos_zerados(self):
+        resumo = self.estoque.resumo()
+        self.assertAlmostEqual(resumo["valor_total"], 6360.0)
+        self.assertEqual(resumo["produtos_zerados"], 1)
+
+
+class TestEstoqueComMock(unittest.TestCase):
+
+    def setUp(self):
+        self.estoque = Estoque()
+        self.produto = Produto("M001", "Monitor", 900.0, 5, "eletronico")
+        self.estoque.adicionar_produto(self.produto)
+
+    def test_transferir_chama_saida_e_adiciona_produto_no_destino(self):
+        destino = Estoque()
+
+        with patch.object(self.estoque, "saida") as mock_saida, \
+             patch.object(destino, "adicionar_produto") as mock_adicionar:
+            self.estoque.transferir("M001", 2, destino)
+
+        mock_saida.assert_called_once_with("M001", 2)
+        mock_adicionar.assert_called_once()
+
+        produto_enviado = mock_adicionar.call_args[0][0]
+        self.assertEqual(produto_enviado.codigo, "M001")
+        self.assertEqual(produto_enviado.quantidade, 2)
+
+    def test_transferir_para_destino_com_produto_existente_nao_chama_adicionar_produto(self):
+        destino = Estoque()
+        destino.adicionar_produto(Produto("M001", "Monitor", 900.0, 1, "eletronico"))
+
+        with patch.object(self.estoque, "saida") as mock_saida, \
+             patch.object(destino, "adicionar_produto") as mock_adicionar:
+            self.estoque.transferir("M001", 3, destino)
+
+        mock_saida.assert_called_once_with("M001", 3)
+        mock_adicionar.assert_not_called()
+        self.assertEqual(destino.buscar_produto("M001").quantidade, 4)
+
+    def test_valor_total_estoque_soma_retorno_dos_produtos_com_mock(self):
+        estoque = Estoque()
+
+        produto1 = MagicMock()
+        produto2 = MagicMock()
+        produto1.valor_total.return_value = 120.0
+        produto2.valor_total.return_value = 80.0
+
+        estoque._produtos = {"A": produto1, "B": produto2}
+
+        total = estoque.valor_total_estoque()
+
+        self.assertEqual(total, 200.0)
+        produto1.valor_total.assert_called_once()
+        produto2.valor_total.assert_called_once()
