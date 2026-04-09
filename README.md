@@ -2,6 +2,8 @@
 
 [![CI/CD](https://github.com/Vinny-TS/sistema-estoque-ci/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Vinny-TS/sistema-estoque-ci/actions/workflows/ci-cd.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/flask-3.x-black.svg)](https://flask.palletsprojects.com/)
+[![Pytest](https://img.shields.io/badge/tests-pytest-success.svg)](https://pytest.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > Projeto desenvolvido para a disciplina **C14 – Engenharia de Software**  
@@ -121,7 +123,7 @@ Para que a notificação por e-mail funcione, configure os seguintes **Secrets**
 
 ## 🤖 Uso de IA
 
-Este projeto utilizou IA (Claude – Anthropic) como auxílio na estruturação inicial do código, testes e pipeline.
+Este projeto utilizou IA (Claude – Anthropic e GPT) como auxílio na estruturação inicial do código, testes e pipeline.
 
 Os prompts principais foram:
 
